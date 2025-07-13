@@ -39,7 +39,6 @@ vietnamese-interpreter/
 ├── data/
 │   ├── input/          # Place audio files here for processing
 │   └── output/         # Processed results saved here
-├── models/             # Downloaded model cache
 ├── logs/               # Centralized logging with separate files
 │   ├── transcription.txt  # Audio processing logs
 │   ├── translation.txt    # Translation logs
