@@ -51,6 +51,7 @@ Add these cells to your Colab notebook:
 # Install required packages
 !pip install -q transformers torch librosa pytz jiwer
 !pip install -q accelerate  # For faster model loading
+!pip install -q datasets soundfile  # For Hugging Face datasets
 
 # Verify GPU is available
 import torch
@@ -64,9 +65,198 @@ print(f"GPU device: {torch.cuda.get_device_name(0) if torch.cuda.is_available() 
 !python test_system.py
 ```
 
-### 5. Upload Audio Files
+### 5. Download Test Audio from Hugging Face Datasets
 
-#### Option A: Upload from Local Computer
+#### Option A: Vietnamese Audio Data (FPT FOSD Dataset)
+```python
+from datasets import load_dataset
+import soundfile as sf
+import os
+
+# Create input directory
+os.makedirs('data/input', exist_ok=True)
+
+print("Loading Vietnamese audio dataset (FPT FOSD)...")
+try:
+    # Load Vietnamese dataset
+    ds_vi = load_dataset("doof-ferb/fpt_fosd", split="train")
+    
+    # Download first few samples for testing
+    num_samples = 3  # Adjust as needed
+    print(f"Downloading {num_samples} Vietnamese audio samples...")
+    
+    for i in range(min(num_samples, len(ds_vi))):
+        sample = ds_vi[i]
+        audio_data = sample['audio']
+        
+        # Save audio file
+        filename = f"vietnamese_sample_{i+1}.wav"
+        filepath = f"data/input/{filename}"
+        
+        sf.write(filepath, audio_data['array'], audio_data['sampling_rate'])
+        print(f"✓ Saved: {filename} ({len(audio_data['array'])/audio_data['sampling_rate']:.1f}s)")
+        
+        # Print transcription for reference
+        if 'text' in sample:
+            print(f"  Text: {sample['text'][:100]}...")
+        elif 'sentence' in sample:
+            print(f"  Text: {sample['sentence'][:100]}...")
+        print()
+        
+except Exception as e:
+    print(f"Error loading Vietnamese dataset: {e}")
+    print("Continuing with English dataset...")
+```
+
+#### Option B: English Audio Data (ATCO2 Corpus)
+```python
+print("Loading English audio dataset (ATCO2 Corpus)...")
+try:
+    # Load English dataset
+    ds_en = load_dataset("Jzuluaga/atco2_corpus_1h", split="train")
+    
+    # Download first few samples for testing
+    num_samples = 3  # Adjust as needed
+    print(f"Downloading {num_samples} English audio samples...")
+    
+    for i in range(min(num_samples, len(ds_en))):
+        sample = ds_en[i]
+        audio_data = sample['audio']
+        
+        # Save audio file
+        filename = f"english_sample_{i+1}.wav"
+        filepath = f"data/input/{filename}"
+        
+        sf.write(filepath, audio_data['array'], audio_data['sampling_rate'])
+        print(f"✓ Saved: {filename} ({len(audio_data['array'])/audio_data['sampling_rate']:.1f}s)")
+        
+        # Print transcription for reference
+        if 'text' in sample:
+            print(f"  Text: {sample['text'][:100]}...")
+        elif 'transcription' in sample:
+            print(f"  Text: {sample['transcription'][:100]}...")
+        print()
+        
+except Exception as e:
+    print(f"Error loading English dataset: {e}")
+    print("You can still upload your own files using the manual upload option below.")
+```
+
+#### Option C: Both Datasets (Recommended)
+```python
+from datasets import load_dataset
+import soundfile as sf
+import os
+
+# Create input directory
+os.makedirs('data/input', exist_ok=True)
+
+def download_audio_samples():
+    """Download sample audio files from both Vietnamese and English datasets"""
+    
+    # Vietnamese dataset
+    print("="*50)
+    print("DOWNLOADING VIETNAMESE AUDIO SAMPLES")
+    print("="*50)
+    
+    try:
+        ds_vi = load_dataset("doof-ferb/fpt_fosd", split="train")
+        print(f"Vietnamese dataset loaded: {len(ds_vi)} samples available")
+        
+        # Download 2-3 Vietnamese samples
+        for i in range(min(3, len(ds_vi))):
+            sample = ds_vi[i]
+            audio_data = sample['audio']
+            
+            filename = f"vietnamese_sample_{i+1}.wav"
+            filepath = f"data/input/{filename}"
+            
+            # Resample to 16kHz if needed (for consistency with Whisper)
+            target_sr = 16000
+            if audio_data['sampling_rate'] != target_sr:
+                import librosa
+                audio_resampled = librosa.resample(
+                    audio_data['array'], 
+                    orig_sr=audio_data['sampling_rate'], 
+                    target_sr=target_sr
+                )
+                sf.write(filepath, audio_resampled, target_sr)
+            else:
+                sf.write(filepath, audio_data['array'], audio_data['sampling_rate'])
+            
+            duration = len(audio_data['array']) / audio_data['sampling_rate']
+            print(f"✓ {filename} - {duration:.1f}s")
+            
+            # Show reference text
+            text_key = 'text' if 'text' in sample else ('sentence' if 'sentence' in sample else None)
+            if text_key:
+                print(f"  Reference: {sample[text_key][:80]}...")
+            print()
+            
+    except Exception as e:
+        print(f"❌ Error with Vietnamese dataset: {e}")
+    
+    # English dataset
+    print("="*50)
+    print("DOWNLOADING ENGLISH AUDIO SAMPLES")
+    print("="*50)
+    
+    try:
+        ds_en = load_dataset("Jzuluaga/atco2_corpus_1h", split="train")
+        print(f"English dataset loaded: {len(ds_en)} samples available")
+        
+        # Download 2-3 English samples
+        for i in range(min(3, len(ds_en))):
+            sample = ds_en[i]
+            audio_data = sample['audio']
+            
+            filename = f"english_sample_{i+1}.wav"
+            filepath = f"data/input/{filename}"
+            
+            # Resample to 16kHz if needed
+            target_sr = 16000
+            if audio_data['sampling_rate'] != target_sr:
+                import librosa
+                audio_resampled = librosa.resample(
+                    audio_data['array'], 
+                    orig_sr=audio_data['sampling_rate'], 
+                    target_sr=target_sr
+                )
+                sf.write(filepath, audio_resampled, target_sr)
+            else:
+                sf.write(filepath, audio_data['array'], audio_data['sampling_rate'])
+            
+            duration = len(audio_data['array']) / audio_data['sampling_rate']
+            print(f"✓ {filename} - {duration:.1f}s")
+            
+            # Show reference text
+            text_key = 'text' if 'text' in sample else ('transcription' if 'transcription' in sample else None)
+            if text_key:
+                print(f"  Reference: {sample[text_key][:80]}...")
+            print()
+            
+    except Exception as e:
+        print(f"❌ Error with English dataset: {e}")
+    
+    # List downloaded files
+    print("="*50)
+    print("DOWNLOADED FILES SUMMARY")
+    print("="*50)
+    
+    import glob
+    audio_files = glob.glob('data/input/*.wav')
+    if audio_files:
+        for file in audio_files:
+            print(f"📁 {os.path.basename(file)}")
+        print(f"\nTotal: {len(audio_files)} audio files ready for testing")
+    else:
+        print("❌ No audio files downloaded. Please check the errors above.")
+
+# Run the download function
+download_audio_samples()
+```
+
+#### Option D: Manual Upload (Alternative)
 ```python
 from google.colab import files
 import os
@@ -82,29 +272,6 @@ uploaded = files.upload()
 for filename in uploaded.keys():
     !mv "{filename}" data/input/
     print(f"Uploaded: {filename}")
-```
-
-#### Option B: Download Sample Files
-```python
-# Download sample audio files for testing
-!mkdir -p data/input
-
-# Example: Download sample Vietnamese audio (replace with actual URLs)
-!wget -O data/input/vietnamese_sample.wav "https://example.com/vietnamese_audio.wav"
-!wget -O data/input/english_sample.wav "https://example.com/english_audio.wav"
-
-# Or create a simple test audio file
-!python -c "
-import numpy as np
-import soundfile as sf
-# Generate a simple tone for testing
-sample_rate = 16000
-duration = 3  # seconds
-t = np.linspace(0, duration, int(sample_rate * duration))
-audio = 0.3 * np.sin(2 * np.pi * 440 * t)  # 440 Hz tone
-sf.write('data/input/test_tone.wav', audio, sample_rate)
-print('Created test tone audio file')
-"
 ```
 
 ### 6. Run the Interpreter
@@ -289,25 +456,45 @@ Save this as a template for quick setup:
 # Cell 1: Setup
 !git clone https://github.com/YOUR_USERNAME/vietnamese-interpreter.git
 %cd vietnamese-interpreter
-!pip install -q transformers torch librosa pytz jiwer accelerate
+!pip install -q transformers torch librosa pytz jiwer accelerate datasets soundfile
 
-# Cell 2: Upload Audio
-from google.colab import files
+# Cell 2: Download Test Data from Hugging Face
+from datasets import load_dataset
+import soundfile as sf
 import os
+
 os.makedirs('data/input', exist_ok=True)
-uploaded = files.upload()
-for filename in uploaded.keys():
-    !mv "{filename}" data/input/
 
-# Cell 3: Process Audio
-!python src/main.py data/input/YOUR_FILE.wav
+# Vietnamese dataset
+print("Downloading Vietnamese audio samples...")
+ds_vi = load_dataset("doof-ferb/fpt_fosd", split="train")
+for i in range(2):  # Download 2 samples
+    sample = ds_vi[i]
+    audio_data = sample['audio']
+    sf.write(f"data/input/vietnamese_{i+1}.wav", audio_data['array'], audio_data['sampling_rate'])
 
-# Cell 4: View Results
+# English dataset  
+print("Downloading English audio samples...")
+ds_en = load_dataset("Jzuluaga/atco2_corpus_1h", split="train")
+for i in range(2):  # Download 2 samples
+    sample = ds_en[i]
+    audio_data = sample['audio']
+    sf.write(f"data/input/english_{i+1}.wav", audio_data['array'], audio_data['sampling_rate'])
+
+print("✓ Test audio files ready!")
+
+# Cell 3: Test Vietnamese Audio
+!python src/main.py data/input/vietnamese_1.wav
+
+# Cell 4: Test English Audio
+!python src/main.py data/input/english_1.wav
+
+# Cell 5: View Results
 import json, glob
 latest = max(glob.glob('data/output/*.json'), key=os.path.getctime)
 with open(latest, 'r', encoding='utf-8') as f:
     result = json.load(f)
-print(f"Original: {result['transcription']['text']}")
+print(f"Original ({result['transcription']['language']}): {result['transcription']['text']}")
 print(f"Translated: {result['translation']['translated_text']}")
 ```
 
@@ -320,3 +507,25 @@ print(f"Translated: {result['translation']['translated_text']}")
 5. **Reconnect**: If disconnected, just re-run the setup cells
 
 This setup gives you access to free GPU processing for your Vietnamese Interpreter POC!
+
+## Dataset Information
+
+### Vietnamese Dataset (FPT FOSD)
+- **Source**: `doof-ferb/fpt_fosd`
+- **Content**: Vietnamese speech recognition data
+- **Format**: Audio with Vietnamese transcriptions
+- **Use Case**: Testing Vietnamese → English translation
+
+### English Dataset (ATCO2 Corpus)
+- **Source**: `Jzuluaga/atco2_corpus_1h` 
+- **Content**: Air Traffic Control communications (1 hour subset)
+- **Format**: Audio with English transcriptions
+- **Use Case**: Testing English → Vietnamese translation
+
+### Benefits of Using HF Datasets:
+- ✅ **No manual upload needed** - automatic download
+- ✅ **Real speech data** - authentic audio samples
+- ✅ **Reference transcriptions** - compare with Whisper output
+- ✅ **Consistent quality** - pre-processed audio
+- ✅ **Free access** - no cost for testing
+- ✅ **Variety** - multiple speakers and scenarios
