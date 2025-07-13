@@ -39,7 +39,6 @@ vietnamese-interpreter/
 ├── data/
 │   ├── input/          # Place audio files here for processing
 │   └── output/         # Processed results saved here
-├── models/             # Downloaded model cache
 ├── logs/               # Centralized logging with separate files
 │   ├── transcription.txt  # Audio processing logs
 │   ├── translation.txt    # Translation logs
@@ -58,8 +57,7 @@ vietnamese-interpreter/
 ### 1. Install Dependencies
 
 ```bash
-pip install -r requirements.txt
-pip install google-generativeai  # For Gemini support
+pip install -r requirements.txt  # For Gemini support
 ```
 
 ### 2. Configure API Keys

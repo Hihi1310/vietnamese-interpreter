@@ -8,3 +8,4 @@ pytz>=2023.3
 jiwer>=3.0.0
 torchcodec==0.2.0
 datasets[audio]>=2.18.0
+google-generativeai>=0.8.5
