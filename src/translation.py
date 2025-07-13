@@ -31,7 +31,8 @@ class TextTranslator:
             self.translator = pipeline(
                 "translation",
                 model=self.config['models']['translation'],
-                device=0 if device == "cuda" else -1
+                device=0 if device == "cuda" else -1,
+                token=self.config.get('huggingface_token', "")
             )
             self.logger.info("Translation model loaded successfully")
             

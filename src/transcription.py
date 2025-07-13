@@ -32,7 +32,8 @@ class AudioTranscriber:
             self.whisper = pipeline(
                 "automatic-speech-recognition",
                 model=self.config['models']['whisper'],
-                device=0 if device == "cuda" else -1
+                device=0 if device == "cuda" else -1,
+                token=self.config.get('huggingface_token', "")
             )
             self.logger.info("Whisper model loaded successfully")
             
