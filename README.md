@@ -1,100 +1,213 @@
 # Vietnamese Interpreter POC
 
-A proof-of-concept near-real-time AI interpreter for Vietnamese and English using OpenAI Whisper and NLLB translation models.
+A proof-of-concept bilingual interpreter for Vietnamese and English using OpenAI Whisper for transcription and Google Gemini Flash 2.0 for translation.
 
-## Project Structure
+## 🚀 Key Features
+
+- **High-Speed Translation**: Powered by Gemini Flash 2.0 for fast, accurate translation
+- **Bilingual Support**: Vietnamese ↔ English with manual language selection
+- **Mixed Language Handling**: Handles code-switching and technical terms naturally
+- **Centralized Logging**: Clean, organized logging system with GMT+7 timestamps
+- **User-Controlled Language**: No auto-detection - users specify source language explicitly
+
+## 📁 Project Structure
 
 ```
 vietnamese-interpreter/
 ├── data/
 │   ├── input/          # Place audio files here for testing
-│   └── output/         # Processed results will be saved here
+│   └── output/         # Processed results saved here
 ├── models/             # Downloaded model cache
-├── logs/               # Log files with GMT+7 timestamps
+├── logs/               # Centralized logging with separate files
+│   ├── transcription.txt  # Audio processing logs
+│   ├── translation.txt    # Translation logs
+│   └── system.txt         # Main system logs
 ├── src/
-│   ├── transcription.py  # Audio transcription module
-│   ├── translation.py    # Text translation module
-│   └── main.py          # Main application
-├── config.json         # Configuration settings
-└── requirements.txt    # Python dependencies
+│   ├── transcription.py   # Whisper transcription module
+│   ├── translation.py     # Gemini translation module
+│   ├── logger.py          # Centralized logging setup
+│   └── main.py           # Main application
+├── config.json          # Configuration with API keys
+└── requirements.txt     # Python dependencies
 ```
 
-## Quick Start
+## ⚡ Quick Start
 
 ### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
+pip install google-generativeai  # For Gemini support
 ```
 
-### 2. Place Audio Files
+### 2. Configure API Keys
 
-Copy your Vietnamese or English audio files (WAV, MP3, M4A) to the `data/input/` directory.
+Edit `config.json` and add your API keys:
 
-### 3. Run the Interpreter
+```json
+{
+  "models": {
+    "whisper": "openai/whisper-large-v3-turbo",
+    "gemini": "gemini-2.0-flash-exp"
+  },
+  "huggingface_token": "hf_your_token_here",
+  "gemini_api_key": "AIzaSyC-your_gemini_api_key_here"
+}
+```
+
+**Get API Keys:**
+- **Gemini API**: [Google AI Studio](https://makersuite.google.com/app/apikey)
+- **Hugging Face**: [HF Settings](https://huggingface.co/settings/tokens) (optional, for gated models)
+
+### 3. Place Audio Files
+
+Copy your audio files (WAV, MP3, M4A) to the `data/input/` directory.
+
+### 4. Run the Interpreter
 
 ```bash
 cd src
-python main.py ../data/input/your_audio_file.wav
+python main.py <audio_file> [source_language]
 ```
 
-## Example Usage
+## 📖 Usage Examples
+
+### Basic Usage (Auto-detect from transcription)
+```bash
+python main.py ../data/input/speech.wav
+```
+
+### Explicit Language Selection (Recommended)
+```bash
+# Vietnamese audio
+python main.py ../data/input/vietnamese_speech.wav vi
+
+# English audio
+python main.py ../data/input/english_speech.wav en
+
+# Mixed language (Vietnamese with English tech terms)
+python main.py ../data/input/mixed_speech.wav vi
+```
+
+## 🔧 Translation API
+
+The translation module supports explicit language selection:
+
+```python
+from translation import TextTranslator
+
+translator = TextTranslator()
+
+# Method 1: Direct calls
+result = translator.translate("Xin chào", "vi")  # Vietnamese to English
+result = translator.translate("Hello", "en")     # English to Vietnamese
+
+# Method 2: Helper methods
+vi_result = translator.translate_vietnamese_to_english("Tôi học programming")
+en_result = translator.translate_english_to_vietnamese("I love phở")
+```
+
+## 📊 Output Format
+
+Results are saved to `data/output/interpreter_result_TIMESTAMP.json`:
+
+```json
+{
+  "input_file": "path/to/audio.wav",
+  "transcription": {
+    "text": "Transcribed text here",
+    "language": "vi",
+    "processing_time": 1.23,
+    "timestamp": "2025-01-13T10:30:00+07:00"
+  },
+  "translation": {
+    "raw_transcript": "Original text",
+    "translated_text": "Translated text",
+    "source_language": "vi",
+    "target_language": "en",
+    "processing_time": 0.85,
+    "timestamp": "2025-01-13T10:30:01+07:00"
+  },
+  "total_processing_time": 2.08
+}
+```
+
+## ⚙️ Configuration
+
+### Key Settings in `config.json`:
+
+```json
+{
+  "models": {
+    "whisper": "openai/whisper-large-v3-turbo",
+    "gemini": "gemini-2.0-flash-exp"
+  },
+  "huggingface_token": "",
+  "gemini_api_key": "",
+  "audio": {
+    "sample_rate": 16000,
+    "supported_formats": [".wav", ".mp3", ".m4a"]
+  },
+  "logging": {
+    "log_level": "INFO"
+  }
+}
+```
+
+## 🏗️ Architecture Changes
+
+### From Previous Version:
+- ❌ **Removed**: Hugging Face NLLB translation model
+- ❌ **Removed**: Auto language detection (error-prone)
+- ❌ **Removed**: Duplicate logging code across modules
+
+### New Implementation:
+- ✅ **Added**: Google Gemini Flash 2.0 for translation
+- ✅ **Added**: Mandatory source language selection
+- ✅ **Added**: Centralized logging system (`logger.py`)
+- ✅ **Added**: Mixed language handling support
+- ✅ **Added**: Command-line language selection
+
+## 🎯 Benefits
+
+1. **Faster Translation**: Gemini Flash 2.0 optimized for speed
+2. **Better Quality**: Natural handling of mixed languages and cultural terms
+3. **User Control**: Explicit language selection prevents auto-detection errors
+4. **Cleaner Code**: Centralized logging, no code duplication
+5. **Cost Effective**: API-based, no local GPU requirements for translation
+
+## 📋 System Requirements
+
+- **Python**: 3.8+
+- **Internet**: Required for Gemini API calls
+- **Memory**: 4GB+ RAM
+- **GPU**: Optional for Whisper (CPU fallback available)
+
+## 🔧 Troubleshooting
+
+### Common Issues:
+
+1. **Missing API Key**: Add `gemini_api_key` to `config.json`
+2. **Invalid Language**: Use only `'vi'` or `'en'` for source language
+3. **Audio Format**: Convert unsupported formats to WAV
+4. **Network Issues**: Check internet connection for Gemini API
+
+### Debug Information:
+- Check logs in `./logs/` directory
+- Use `INFO` log level for detailed processing info
+- Translation errors are logged in `translation.txt`
+
+## 🎪 Example Mixed Language Scenarios
 
 ```bash
-# Process a Vietnamese audio file
-python main.py ../data/input/vietnamese_speech.wav
+# Vietnamese with English programming terms
+python main.py tech_talk.wav vi
 
-# Process an English audio file  
-python main.py ../data/input/english_speech.wav
+# English with Vietnamese cultural terms  
+python main.py food_review.wav en
+
+# Business meeting with code-switching
+python main.py meeting.wav vi  # Primary language is Vietnamese
 ```
 
-## Output
-
-The system will:
-1. Transcribe the audio to text
-2. Detect the language (Vietnamese or English)
-3. Translate to the opposite language
-4. Display results on screen
-5. Save detailed results to `data/output/interpreter_result_TIMESTAMP.json`
-
-## Configuration
-
-Edit `config.json` to modify:
-- Model selections
-- Audio processing settings
-- Logging preferences
-- File paths
-
-## Logs
-
-All operations are logged with GMT+7 timestamps in the `logs/` directory:
-- `transcription.txt` - Audio transcription logs
-- `translation.txt` - Text translation logs  
-- `system.txt` - Main system logs
-
-## System Requirements
-
-- Python 3.8+
-- CUDA-compatible GPU (optional, but recommended for better performance)
-- At least 4GB RAM
-- Internet connection for first-time model downloads
-
-## Supported Formats
-
-- Audio: WAV, MP3, M4A
-- Languages: Vietnamese ↔ English
-
-## Performance Targets (POC)
-
-- Word Error Rate (WER): < 10%
-- Processing time: < 3 seconds per file
-- Translation quality: Basic functional level
-
-## Troubleshooting
-
-1. **Model loading errors**: Ensure stable internet connection for first download
-2. **Audio format errors**: Convert audio to WAV format if issues occur
-3. **Memory errors**: Try using CPU instead of GPU in config
-4. **Import errors**: Install all requirements with `pip install -r requirements.txt`
-
-Check log files in `./logs/` for detailed error information.
+The system now handles these scenarios naturally without making incorrect language assumptions!

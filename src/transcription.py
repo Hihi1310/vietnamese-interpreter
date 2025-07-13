@@ -41,23 +41,6 @@ class AudioTranscriber:
             self.logger.error(f"Failed to load model: {str(e)}")
             raise
     
-    def preprocess_audio(self, audio_path):
-        """Basic audio preprocessing"""
-        try:
-            # Load audio
-            audio, sr = librosa.load(audio_path, sr=self.config['audio']['sample_rate'])
-            
-            # Normalize if enabled
-            if self.config['audio']['preprocessing']['normalize']:
-                audio = librosa.util.normalize(audio)
-            
-            self.logger.info(f"Preprocessed audio: {len(audio)} samples at {sr} Hz")
-            return audio, sr
-            
-        except Exception as e:
-            self.logger.error(f"Audio preprocessing failed: {str(e)}")
-            raise
-    
     def transcribe(self, audio_path):
         """Transcribe audio file"""
         start_time = time.time()
@@ -73,40 +56,14 @@ class AudioTranscriber:
             if file_ext not in self.config['audio']['supported_formats']:
                 raise ValueError(f"Unsupported audio format: {file_ext}")
             
-            # Preprocess audio
-            audio, sr = self.preprocess_audio(audio_path)
-            
-            # Transcribe with return_timestamps and language detection
-            result = self.whisper(audio_path, return_timestamps=True, generate_kwargs={"language": None})
+            # Transcribe directly with Whisper
+            result = self.whisper(audio_path, return_timestamps=True)
             
             processing_time = time.time() - start_time
             
-            # Try to detect language from the result or use manual detection
-            detected_language = 'unknown'
-            if 'chunks' in result and result['chunks']:
-                # Check if language info is in chunks
-                first_chunk = result['chunks'][0]
-                if 'language' in first_chunk:
-                    detected_language = first_chunk['language']
-            
-            # If still unknown, try to infer from text content or set default
-            if detected_language == 'unknown':
-                text = result.get('text', '').strip()
-                if text:
-                    # Simple heuristic: if text contains Vietnamese characters, assume Vietnamese
-                    vietnamese_chars = 'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ'
-                    if any(char in vietnamese_chars for char in text):
-                        detected_language = 'vi'
-                    else:
-                        # Default to English for bilingual Vietnamese-English setting
-                        detected_language = 'en'
-                else:
-                    detected_language = 'en'  # Default assumption
-            
-            # Extract information for evaluation
+            # Extract transcription information (language will be provided by user)
             transcription = {
                 'text': result['text'],
-                'language': detected_language,
                 'processing_time': processing_time,
                 'file_path': audio_path,
                 'timestamp': datetime.now(pytz.timezone('Asia/Bangkok')).isoformat()

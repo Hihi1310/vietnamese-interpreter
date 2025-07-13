@@ -3,8 +3,7 @@ import os
 import time
 from datetime import datetime
 import pytz
-from transformers import pipeline
-import torch
+import google.generativeai as genai
 from logger import setup_logger
 
 class TextTranslator:
@@ -23,45 +22,58 @@ class TextTranslator:
         self.logger.info("Text translator initialized")
     
     def load_model(self):
-        """Load translation model"""
+        """Load Gemini model"""
         try:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            self.logger.info(f"Loading translation model on {device}")
+            # Configure Gemini with API key
+            api_key = self.config.get('gemini_api_key', "")
+            if not api_key:
+                raise ValueError("Gemini API key not found in config. Please add 'gemini_api_key' to your config.json")
             
-            self.translator = pipeline(
-                "translation",
-                model=self.config['models']['translation'],
-                device=0 if device == "cuda" else -1,
-                token=self.config.get('huggingface_token', "")
-            )
-            self.logger.info("Translation model loaded successfully")
+            genai.configure(api_key=api_key)
+            
+            # Initialize the model
+            model_name = self.config.get('models', {}).get('gemini', 'gemini-pro')
+            self.model = genai.GenerativeModel(model_name)
+            
+            self.logger.info(f"Gemini model '{model_name}' loaded successfully")
             
         except Exception as e:
-            self.logger.error(f"Failed to load translation model: {str(e)}")
+            self.logger.error(f"Failed to load Gemini model: {str(e)}")
             raise
     
-    def translate(self, text, source_language=None):
-        """Translate text between Vietnamese and English"""
+    def translate(self, text, source_language):
+        """Translate text between Vietnamese and English using Gemini
+        
+        Args:
+            text (str): Text to translate
+            source_language (str): 'vi' or 'en' - REQUIRED, no auto-detection
+        """
         start_time = time.time()
         
         try:
-            # Auto-detect language if not provided
-            if source_language is None:
-                vietnamese_chars = 'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ'
-                source_language = 'vi' if any(char in vietnamese_chars for char in text) else 'en'
+            # Validate source language
+            if source_language not in ['vi', 'en']:
+                raise ValueError("source_language must be 'vi' or 'en'. Auto-detection has been removed.")
             
-            # Set translation direction
+            self.logger.info(f"Using source language: {source_language}")
+            
+            # Set translation direction and create prompt
             if source_language == 'vi':
-                src_lang_code, tgt_lang_code = "vie_Latn", "eng_Latn"
+                target_language = 'en'
+                prompt = f"Translate the following Vietnamese text to English. Handle any mixed English words naturally. Only provide the translation, no explanations:\n\n{text}"
             else:
-                src_lang_code, tgt_lang_code = "eng_Latn", "vie_Latn"
+                target_language = 'vi'
+                prompt = f"Translate the following English text to Vietnamese. Handle any mixed Vietnamese words naturally. Only provide the translation, no explanations:\n\n{text}"
             
-            # Perform translation
-            result = self.translator(text, src_lang=src_lang_code, tgt_lang=tgt_lang_code, max_length=512)
+            # Generate translation using Gemini
+            response = self.model.generate_content(prompt)
+            translated_text = response.text.strip()
             
             return {
                 'raw_transcript': text,
-                'translated_text': result[0]['translation_text'],
+                'translated_text': translated_text,
+                'source_language': source_language,
+                'target_language': target_language,
                 'processing_time': time.time() - start_time,
                 'timestamp': datetime.now(pytz.timezone('Asia/Bangkok')).isoformat()
             }
@@ -89,13 +101,36 @@ class TextTranslator:
         except Exception as e:
             self.logger.error(f"Failed to save translation: {str(e)}")
             raise
+    
+    def translate_vietnamese_to_english(self, text):
+        """Explicitly translate Vietnamese text to English"""
+        return self.translate(text, source_language='vi')
+    
+    def translate_english_to_vietnamese(self, text):
+        """Explicitly translate English text to Vietnamese"""
+        return self.translate(text, source_language='en')
 
 if __name__ == "__main__":
     translator = TextTranslator()
     
-    # Test both directions
-    vi_result = translator.translate("Xin chào")
-    en_result = translator.translate("Hello")
+    # Test mixed language scenarios with explicit source language selection
+    mixed_vi_text = "Tôi đang học programming và artificial intelligence"
+    mixed_en_text = "I love Vietnamese phở and bánh mì"
     
-    print(f"Vietnamese: {vi_result['raw_transcript']} -> {vi_result['translated_text']}")
-    print(f"English: {en_result['raw_transcript']} -> {en_result['translated_text']}")
+    print("=== EXPLICIT LANGUAGE SELECTION ===")
+    vi_to_en = translator.translate_vietnamese_to_english(mixed_vi_text)
+    en_to_vi = translator.translate_english_to_vietnamese(mixed_en_text)
+    
+    print(f"VI->EN: {vi_to_en['raw_transcript']}")
+    print(f"       -> {vi_to_en['translated_text']}")
+    print(f"EN->VI: {en_to_vi['raw_transcript']}")
+    print(f"       -> {en_to_vi['translated_text']}")
+    
+    print(f"\nProcessing times: VI->EN {vi_to_en['processing_time']:.2f}s, EN->VI {en_to_vi['processing_time']:.2f}s")
+    
+    # Direct method calls
+    print("\n=== DIRECT METHOD CALLS ===")
+    direct_vi = translator.translate(mixed_vi_text, 'vi')
+    direct_en = translator.translate(mixed_en_text, 'en')
+    print(f"Direct VI->EN: {direct_vi['translated_text']}")
+    print(f"Direct EN->VI: {direct_en['translated_text']}")
