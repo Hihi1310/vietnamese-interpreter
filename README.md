@@ -1,6 +1,6 @@
 # Vietnamese Interpreter POC
 
-A bilingual interpreter for Vietnamese and English using OpenAI Whisper large-v3-turbo (inspired by [this post](https://github.com/openai/whisper/discussions/2363#discussion-7264254)) for transcription and Google Gemini Flash 2.0 for a speedy translation. For more detail on project read Project guideline
+A bilingual interpreter for Vietnamese and English using OpenAI Whisper large-v3-turbo (inspired by [this post](https://github.com/openai/whisper/discussions/2363#discussion-7264254)) for transcription and Google Gemini Flash 2.0 for a speedy translation. For more detail on project read Project guideline. Also system test on Google Colab is available with the notebook file.
 
 ## Current Project Summary
 
