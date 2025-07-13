@@ -1,0 +1,31 @@
+{
+  "models": {
+    "whisper": "openai/whisper-large",
+    "translation": "facebook/nllb-200-distilled-600M"
+  },
+  "audio": {
+    "sample_rate": 16000,
+    "supported_formats": [".wav", ".mp3", ".m4a"],
+    "preprocessing": {
+      "normalize": true,
+      "noise_reduction": false
+    }
+  },
+  "translation": {
+    "source_languages": ["vi", "en"],
+    "target_languages": ["en", "vi"],
+    "confidence_threshold": 0.3
+  },
+  "logging": {
+    "timezone": "GMT+7",
+    "log_level": "INFO",
+    "separate_files": true,
+    "include_timestamps": true
+  },
+  "paths": {
+    "input_dir": "./data/input",
+    "output_dir": "./data/output",
+    "models_dir": "./models",
+    "logs_dir": "./logs"
+  }
+}
