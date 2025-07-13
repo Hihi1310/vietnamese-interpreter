@@ -1,12 +1,12 @@
 import json
 import os
 import time
-import logging
 from datetime import datetime
 import pytz
 import librosa
 from transformers import pipeline
 import torch
+from logger import setup_logger
 
 class AudioTranscriber:
     def __init__(self, config_path="config.json"):
@@ -18,26 +18,9 @@ class AudioTranscriber:
         self.load_model()
     
     def setup_logging(self):
-        """Setup logging with GMT+7 timezone"""
-        gmt7 = pytz.timezone('Asia/Bangkok')
-        
-        # Create formatter with GMT+7 timestamp
-        class GMT7Formatter(logging.Formatter):
-            def formatTime(self, record, datefmt=None):
-                dt = datetime.fromtimestamp(record.created, tz=gmt7)
-                return dt.strftime('%Y-%m-%d %H:%M:%S GMT+7')
-        
-        # Setup transcription logger
-        self.logger = logging.getLogger('transcription')
-        self.logger.setLevel(getattr(logging, self.config['logging']['log_level']))
-        
-        handler = logging.FileHandler(
-            os.path.join(self.config['paths']['logs_dir'], 'transcription.txt')
-        )
-        formatter = GMT7Formatter('[%(asctime)s] [%(levelname)s] %(message)s')
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
-        
+        """Setup logging using centralized logger"""
+        log_file = os.path.join(self.config['paths']['logs_dir'], 'transcription.txt')
+        self.logger = setup_logger('transcription', log_file, self.config['logging']['log_level'])
         self.logger.info("Audio transcriber initialized")
     
     def load_model(self):
@@ -92,23 +75,43 @@ class AudioTranscriber:
             # Preprocess audio
             audio, sr = self.preprocess_audio(audio_path)
             
-            # Transcribe using preprocessed audio
-            result = self.whisper(audio, return_timestamps=True)
+            # Transcribe with return_timestamps and language detection
+            result = self.whisper(audio_path, return_timestamps=True, generate_kwargs={"language": None})
             
             processing_time = time.time() - start_time
             
-            # Extract information
+            # Try to detect language from the result or use manual detection
+            detected_language = 'unknown'
+            if 'chunks' in result and result['chunks']:
+                # Check if language info is in chunks
+                first_chunk = result['chunks'][0]
+                if 'language' in first_chunk:
+                    detected_language = first_chunk['language']
+            
+            # If still unknown, try to infer from text content or set default
+            if detected_language == 'unknown':
+                text = result.get('text', '').strip()
+                if text:
+                    # Simple heuristic: if text contains Vietnamese characters, assume Vietnamese
+                    vietnamese_chars = 'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ'
+                    if any(char in vietnamese_chars for char in text):
+                        detected_language = 'vi'
+                    else:
+                        # Default to English for bilingual Vietnamese-English setting
+                        detected_language = 'en'
+                else:
+                    detected_language = 'en'  # Default assumption
+            
+            # Extract information for evaluation
             transcription = {
                 'text': result['text'],
-                'language': getattr(result, 'language', 'unknown'),
-                'confidence': getattr(result, 'confidence', 0.0),
+                'language': detected_language,
                 'processing_time': processing_time,
                 'file_path': audio_path,
                 'timestamp': datetime.now(pytz.timezone('Asia/Bangkok')).isoformat()
             }
             
             self.logger.info(f"Transcription completed in {processing_time:.2f}s")
-            self.logger.info(f"Detected language: {transcription['language']}")
             self.logger.info(f"Text length: {len(transcription['text'])} characters")
             
             return transcription

@@ -1,6 +1,6 @@
 {
   "models": {
-    "whisper": "openai/whisper-large",
+    "whisper": "whisper-large-v3-turbo",
     "translation": "facebook/nllb-200-distilled-600M"
   },
   "audio": {

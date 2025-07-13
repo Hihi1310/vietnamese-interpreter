@@ -1,7 +1,6 @@
 import os
 import sys
 import json
-import logging
 from datetime import datetime
 import pytz
 
@@ -10,6 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__)))
 
 from transcription import AudioTranscriber
 from translation import TextTranslator
+from logger import setup_logger
 
 class VietnameseInterpreter:
     def __init__(self, config_path="config.json"):
@@ -26,26 +26,12 @@ class VietnameseInterpreter:
         self.setup_components()
     
     def setup_logging(self):
-        """Setup main system logging"""
-        gmt7 = pytz.timezone('Asia/Bangkok')
-        
-        class GMT7Formatter(logging.Formatter):
-            def formatTime(self, record, datefmt=None):
-                dt = datetime.fromtimestamp(record.created, tz=gmt7)
-                return dt.strftime('%Y-%m-%d %H:%M:%S GMT+7')
-        
-        self.logger = logging.getLogger('system')
-        self.logger.setLevel(getattr(logging, self.config['logging']['log_level']))
-        
-        # Create logs directory if it doesn't exist
+        """Setup minimal system logging for debugging"""
         logs_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
         os.makedirs(logs_dir, exist_ok=True)
         
-        handler = logging.FileHandler(os.path.join(logs_dir, 'system.txt'))
-        formatter = GMT7Formatter('[%(asctime)s] [%(levelname)s] %(message)s')
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
-        
+        log_file = os.path.join(logs_dir, 'system.txt')
+        self.logger = setup_logger('system', log_file, self.config['logging']['log_level'])
         self.logger.info("Vietnamese Interpreter system initialized")
     
     def setup_components(self):
@@ -53,33 +39,23 @@ class VietnameseInterpreter:
         try:
             config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
             
-            self.logger.info("Initializing transcriber...")
             self.transcriber = AudioTranscriber(config_path)
-            
-            self.logger.info("Initializing translator...")
             self.translator = TextTranslator(config_path)
             
-            self.logger.info("All components initialized successfully")
+            self.logger.info("Components initialized")
             
         except Exception as e:
-            self.logger.error(f"Failed to initialize components: {str(e)}")
+            self.logger.error(f"Component initialization failed: {str(e)}")
             raise
     
     def process_audio_file(self, audio_file_path, save_results=True):
         """Complete workflow: transcribe audio and translate text"""
         try:
-            self.logger.info(f"Starting processing of: {audio_file_path}")
+            self.logger.info(f"Processing: {audio_file_path}")
             
-            # Step 1: Transcribe audio
-            self.logger.info("Step 1: Transcribing audio...")
+            # Transcribe and translate
             transcription = self.transcriber.transcribe(audio_file_path)
-            
-            # Step 2: Translate text
-            self.logger.info("Step 2: Translating text...")
-            translation = self.translator.translate(
-                transcription['text'], 
-                source_lang=transcription['language']
-            )
+            translation = self.translator.translate(transcription['text'], transcription.get('language'))
             
             # Combine results
             final_result = {
@@ -90,7 +66,7 @@ class VietnameseInterpreter:
                 'total_processing_time': transcription['processing_time'] + translation['processing_time']
             }
             
-            # Save results if requested
+            # Save results
             if save_results:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 output_path = os.path.join(
@@ -104,7 +80,7 @@ class VietnameseInterpreter:
                 
                 self.logger.info(f"Results saved to: {output_path}")
             
-            self.logger.info(f"Processing completed successfully")
+            self.logger.info("Processing completed")
             return final_result
             
         except Exception as e:
@@ -122,13 +98,9 @@ class VietnameseInterpreter:
         print(f"Timestamp: {result['processing_timestamp']}")
         
         print(f"\n--- TRANSCRIPTION ---")
-        print(f"Detected Language: {result['transcription']['language']}")
-        print(f"Confidence: {result['transcription']['confidence']:.3f}")
         print(f"Text: {result['transcription']['text']}")
         
         print(f"\n--- TRANSLATION ---")
-        print(f"Language Direction: {result['translation']['source_language']} -> {result['translation']['target_language']}")
-        print(f"Confidence: {result['translation']['confidence']:.3f}")
         print(f"Translated Text: {result['translation']['translated_text']}")
         
         print("\n" + "="*60)

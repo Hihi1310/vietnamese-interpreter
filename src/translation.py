@@ -1,11 +1,11 @@
 import json
 import os
 import time
-import logging
 from datetime import datetime
 import pytz
 from transformers import pipeline
 import torch
+from logger import setup_logger
 
 class TextTranslator:
     def __init__(self, config_path="config.json"):
@@ -17,24 +17,9 @@ class TextTranslator:
         self.load_model()
     
     def setup_logging(self):
-        """Setup logging with GMT+7 timezone"""
-        gmt7 = pytz.timezone('Asia/Bangkok')
-        
-        class GMT7Formatter(logging.Formatter):
-            def formatTime(self, record, datefmt=None):
-                dt = datetime.fromtimestamp(record.created, tz=gmt7)
-                return dt.strftime('%Y-%m-%d %H:%M:%S GMT+7')
-        
-        self.logger = logging.getLogger('translation')
-        self.logger.setLevel(getattr(logging, self.config['logging']['log_level']))
-        
-        handler = logging.FileHandler(
-            os.path.join(self.config['paths']['logs_dir'], 'translation.txt')
-        )
-        formatter = GMT7Formatter('[%(asctime)s] [%(levelname)s] %(message)s')
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
-        
+        """Setup logging using centralized logger"""
+        log_file = os.path.join(self.config['paths']['logs_dir'], 'translation.txt')
+        self.logger = setup_logger('translation', log_file, self.config['logging']['log_level'])
         self.logger.info("Text translator initialized")
     
     def load_model(self):
@@ -54,69 +39,31 @@ class TextTranslator:
             self.logger.error(f"Failed to load translation model: {str(e)}")
             raise
     
-    def translate(self, text, source_lang=None, target_lang=None):
+    def translate(self, text, source_language=None):
         """Translate text between Vietnamese and English"""
         start_time = time.time()
         
         try:
-            self.logger.info(f"Starting translation of text: {text[:50]}...")
+            # Auto-detect language if not provided
+            if source_language is None:
+                vietnamese_chars = 'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ'
+                source_language = 'vi' if any(char in vietnamese_chars for char in text) else 'en'
             
-            # Source language should be provided from Whisper transcription
-            if source_lang is None:
-                self.logger.warning("No source language provided, defaulting to English")
-                source_lang = "en"
-            
-            # Determine target language
-            if target_lang is None:
-                target_lang = "en" if source_lang == "vi" else "vi"
-            
-            # Skip translation if source and target are the same
-            if source_lang == target_lang:
-                self.logger.warning(f"Source and target languages are the same: {source_lang}")
-                return {
-                    'original_text': text,
-                    'translated_text': text,
-                    'source_language': source_lang,
-                    'target_language': target_lang,
-                    'confidence': 1.0,
-                    'processing_time': 0.0,
-                    'timestamp': datetime.now(pytz.timezone('Asia/Bangkok')).isoformat()
-                }
-            
-            # Prepare input for NLLB model
-            if source_lang == "vi" and target_lang == "en":
-                src_lang_code = "vie_Latn"
-                tgt_lang_code = "eng_Latn"
-            elif source_lang == "en" and target_lang == "vi":
-                src_lang_code = "eng_Latn"
-                tgt_lang_code = "vie_Latn"
+            # Set translation direction
+            if source_language == 'vi':
+                src_lang_code, tgt_lang_code = "vie_Latn", "eng_Latn"
             else:
-                raise ValueError(f"Unsupported language pair: {source_lang} -> {target_lang}")
+                src_lang_code, tgt_lang_code = "eng_Latn", "vie_Latn"
             
             # Perform translation
-            result = self.translator(
-                text,
-                src_lang=src_lang_code,
-                tgt_lang=tgt_lang_code,
-                max_length=512
-            )
+            result = self.translator(text, src_lang=src_lang_code, tgt_lang=tgt_lang_code, max_length=512)
             
-            processing_time = time.time() - start_time
-            
-            translation_result = {
-                'original_text': text,
+            return {
+                'raw_transcript': text,
                 'translated_text': result[0]['translation_text'],
-                'source_language': source_lang,
-                'target_language': target_lang,
-                'confidence': getattr(result[0], 'score', 0.8),  # Default confidence
-                'processing_time': processing_time,
+                'processing_time': time.time() - start_time,
                 'timestamp': datetime.now(pytz.timezone('Asia/Bangkok')).isoformat()
             }
-            
-            self.logger.info(f"Translation completed in {processing_time:.2f}s")
-            self.logger.info(f"Translation: {source_lang} -> {target_lang}")
-            
-            return translation_result
             
         except Exception as e:
             self.logger.error(f"Translation failed: {str(e)}")
@@ -143,13 +90,11 @@ class TextTranslator:
             raise
 
 if __name__ == "__main__":
-    # Simple test
     translator = TextTranslator()
-    print("Text Translator initialized successfully!")
     
-    # Test translation
-    test_text = "Hello, how are you?"
-    result = translator.translate(test_text)
-    print(f"Original: {result['original_text']}")
-    print(f"Translated: {result['translated_text']}")
-    print(f"Language: {result['source_language']} -> {result['target_language']}")
+    # Test both directions
+    vi_result = translator.translate("Xin chào")
+    en_result = translator.translate("Hello")
+    
+    print(f"Vietnamese: {vi_result['raw_transcript']} -> {vi_result['translated_text']}")
+    print(f"English: {en_result['raw_transcript']} -> {en_result['translated_text']}")
