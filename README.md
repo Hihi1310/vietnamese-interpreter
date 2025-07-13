@@ -1,21 +1,43 @@
 # Vietnamese Interpreter POC
 
-A proof-of-concept bilingual interpreter for Vietnamese and English using OpenAI Whisper for transcription and Google Gemini Flash 2.0 for translation.
+A bilingual interpreter for Vietnamese and English using OpenAI Whisper large-v3-turbo (inspired by [this post](https://github.com/openai/whisper/discussions/2363#discussion-7264254)) for transcription and Google Gemini Flash 2.0 for a speedy translation. For more detail on project read Project guideline
 
-## 🚀 Key Features
+## Current Project Summary
+
+### Pros
+- **Clean Architecture**: Modular design with clear separation of concerns
+- **Smart Technology**: Gemini Flash 2.0 for fast translation, Whisper for accurate transcription
+- **User Control**: Explicit language selection eliminates auto-detection errors
+- **Production Ready**: GPU optimization, centralized logging, proper error handling
+- **Cost Effective**: API-based translation, no local GPU needed for translation
+
+### Cons
+- **Internet Dependent**: Requires stable connection for Gemini API
+- **File-Based Only**: No real-time microphone support
+- **Limited Scope**: Only Vietnamese ↔ English, no other language pairs
+- **No Caching**: Repeated phrases incur API costs
+- **Cold Start**: 3-7 second model loading time (no model caching yet)
+
+### Best For
+Meeting recordings, interview transcripts, mixed-language documents
+
+### Not Ideal For
+Real-time conversations, offline environments where you talk fast
+
+## Key Features
 
 - **High-Speed Translation**: Powered by Gemini Flash 2.0 for fast, accurate translation
 - **Bilingual Support**: Vietnamese ↔ English with manual language selection
 - **Mixed Language Handling**: Handles code-switching and technical terms naturally
 - **Centralized Logging**: Clean, organized logging system with GMT+7 timestamps
-- **User-Controlled Language**: No auto-detection - users specify source language explicitly
+- **User-Controlled Language**: No auto-detection - users specify source language explicitly via `--source` flag
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 vietnamese-interpreter/
 ├── data/
-│   ├── input/          # Place audio files here for testing
+│   ├── input/          # Place audio files here for processing
 │   └── output/         # Processed results saved here
 ├── models/             # Downloaded model cache
 ├── logs/               # Centralized logging with separate files
@@ -31,7 +53,7 @@ vietnamese-interpreter/
 └── requirements.txt     # Python dependencies
 ```
 
-## ⚡ Quick Start
+## Quick Start
 
 ### 1. Install Dependencies
 
@@ -48,7 +70,7 @@ Edit `config.json` and add your API keys:
 {
   "models": {
     "whisper": "openai/whisper-large-v3-turbo",
-    "gemini": "gemini-2.0-flash-exp"
+    "gemini": "gemini-2.0-flash"
   },
   "huggingface_token": "hf_your_token_here",
   "gemini_api_key": "AIzaSyC-your_gemini_api_key_here"
@@ -56,40 +78,49 @@ Edit `config.json` and add your API keys:
 ```
 
 **Get API Keys:**
+You will need account for both websites
 - **Gemini API**: [Google AI Studio](https://makersuite.google.com/app/apikey)
 - **Hugging Face**: [HF Settings](https://huggingface.co/settings/tokens) (optional, for gated models)
 
 ### 3. Place Audio Files
 
-Copy your audio files (WAV, MP3, M4A) to the `data/input/` directory.
+
 
 ### 4. Run the Interpreter
 
 ```bash
 cd src
-python main.py <audio_file> [source_language]
+python main.py --file <audio_file> --source <language>
 ```
 
-## 📖 Usage Examples
+## Usage Examples
 
-### Basic Usage (Auto-detect from transcription)
-```bash
-python main.py ../data/input/speech.wav
-```
-
-### Explicit Language Selection (Recommended)
+### Basic Usage (Required flags)
+Make sure to put your audio files (WAV, MP3, M4A) to the `data/input/` directory.
 ```bash
 # Vietnamese audio
-python main.py ../data/input/vietnamese_speech.wav vi
+python main.py --file ../data/input/vietnamese_speech.wav --source vi
 
-# English audio
-python main.py ../data/input/english_speech.wav en
+# English audio  
+python main.py --file ../data/input/english_speech.wav --source en
 
-# Mixed language (Vietnamese with English tech terms)
-python main.py ../data/input/mixed_speech.wav vi
+# Short flag version
+python main.py -f ../data/input/speech.wav -s vi
 ```
 
-## 🔧 Translation API
+### Advanced Options
+```bash
+# Don't save results to file
+python main.py -f speech.wav -s vi --no-save
+
+# Verbose output with detailed timing
+python main.py -f speech.wav -s en --verbose
+
+# Mixed language (Vietnamese with English tech terms)
+python main.py -f mixed_speech.wav -s vi --verbose
+```
+
+## Translation API
 
 The translation module supports explicit language selection:
 
@@ -107,7 +138,7 @@ vi_result = translator.translate_vietnamese_to_english("Tôi học programming")
 en_result = translator.translate_english_to_vietnamese("I love phở")
 ```
 
-## 📊 Output Format
+## Output Format
 
 Results are saved to `data/output/interpreter_result_TIMESTAMP.json`:
 
@@ -116,7 +147,6 @@ Results are saved to `data/output/interpreter_result_TIMESTAMP.json`:
   "input_file": "path/to/audio.wav",
   "transcription": {
     "text": "Transcribed text here",
-    "language": "vi",
     "processing_time": 1.23,
     "timestamp": "2025-01-13T10:30:00+07:00"
   },
@@ -132,7 +162,7 @@ Results are saved to `data/output/interpreter_result_TIMESTAMP.json`:
 }
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 ### Key Settings in `config.json`:
 
@@ -154,60 +184,25 @@ Results are saved to `data/output/interpreter_result_TIMESTAMP.json`:
 }
 ```
 
-## 🏗️ Architecture Changes
-
-### From Previous Version:
-- ❌ **Removed**: Hugging Face NLLB translation model
-- ❌ **Removed**: Auto language detection (error-prone)
-- ❌ **Removed**: Duplicate logging code across modules
-
-### New Implementation:
-- ✅ **Added**: Google Gemini Flash 2.0 for translation
-- ✅ **Added**: Mandatory source language selection
-- ✅ **Added**: Centralized logging system (`logger.py`)
-- ✅ **Added**: Mixed language handling support
-- ✅ **Added**: Command-line language selection
-
-## 🎯 Benefits
-
-1. **Faster Translation**: Gemini Flash 2.0 optimized for speed
-2. **Better Quality**: Natural handling of mixed languages and cultural terms
-3. **User Control**: Explicit language selection prevents auto-detection errors
-4. **Cleaner Code**: Centralized logging, no code duplication
-5. **Cost Effective**: API-based, no local GPU requirements for translation
-
-## 📋 System Requirements
-
-- **Python**: 3.8+
-- **Internet**: Required for Gemini API calls
-- **Memory**: 4GB+ RAM
-- **GPU**: Optional for Whisper (CPU fallback available)
-
-## 🔧 Troubleshooting
-
-### Common Issues:
-
-1. **Missing API Key**: Add `gemini_api_key` to `config.json`
-2. **Invalid Language**: Use only `'vi'` or `'en'` for source language
-3. **Audio Format**: Convert unsupported formats to WAV
-4. **Network Issues**: Check internet connection for Gemini API
-
-### Debug Information:
+## Troubleshooting
 - Check logs in `./logs/` directory
 - Use `INFO` log level for detailed processing info
 - Translation errors are logged in `translation.txt`
 
-## 🎪 Example Mixed Language Scenarios
+## Example Mixed Language Scenarios
 
 ```bash
 # Vietnamese with English programming terms
-python main.py tech_talk.wav vi
+python main.py --file tech_talk.wav --source vi
 
 # English with Vietnamese cultural terms  
-python main.py food_review.wav en
+python main.py --file food_review.wav --source en
 
 # Business meeting with code-switching
-python main.py meeting.wav vi  # Primary language is Vietnamese
+python main.py --file meeting.wav --source vi  # Primary language is Vietnamese
+
+# Verbose debugging output
+python main.py -f mixed_content.wav -s vi --verbose --no-save
 ```
 
-The system now handles these scenarios naturally without making incorrect language assumptions!
+
