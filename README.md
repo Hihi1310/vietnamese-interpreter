@@ -31,7 +31,8 @@ Edit `config.json` and add your Gemini API key and pick your model:
 ```
 
 Get API key: [Google AI Studio](https://makersuite.google.com/app/apikey)
-Modle list: [list](https://ai.google.dev/gemini-api/docs/models)
+<br>
+Model list: [List](https://ai.google.dev/gemini-api/docs/models)
 
 ### 3. Usage
 
@@ -143,6 +144,7 @@ Basic `config.json` structure:
 
 ## System use cases
 Perfect for: Live conversations, meetings
+<br>
 Not ideal for: Offline use, audio file processing
 
 
