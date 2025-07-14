@@ -1,8 +1,7 @@
 # Vietnamese Interpreter Project Guideline
 
 ## Overview
-This project aims to build a near-real-time AI interpreter for Vietnamese and English using the OpenAI Whisper model on Hugging Face. It will help with communication barriers for expats and Thai colleagues during large events, providing cost-effective audio-to-text and translation solutions.
-
+This project is a real-time AI interpreter for Vietnamese and English using Google Gemini Flash 2.0 for translation and transcription. It helps with communication barriers for expats and Thai colleagues during large events, providing cost-effective real-time interpretation solutions.
 
 ## Technical Components
 
@@ -10,14 +9,14 @@ This project aims to build a near-real-time AI interpreter for Vietnamese and En
 
 #### Translation and Transcription Implementation
 - Translation model: gemini-2.0-flash 
-- Use Whisper's built-in language detection for transcription (avoid additional complexity)
+- Use Google Speech Recognition for real-time transcription
 - Implement simple bidirectional translation with user choosing their main speaking language
 - Basic logging for translation quality assessment
 
 #### System Architecture
-- Simple linear workflow: audio file → Whisper transcription → translation → output
+- Real-time workflow: microphone input → speech recognition → translation → audio output
 - Synchronous processing for easy debugging and validation
-- File-based input/output for testing each component independently
+- Real-time input/output with conversation logging
 - Basic error handling and step-by-step logging
 
 #### Logging Requirements
@@ -26,7 +25,7 @@ This project aims to build a near-real-time AI interpreter for Vietnamese and En
 - Separate log files for: transcription, translation, and system events
 - Include processing time, model confidence scores, and error details
 
-### Post-POC Phase
+### POC Phase
 
 #### Real-time Audio Processing
 - Implement microphone input capture
@@ -46,25 +45,26 @@ This project aims to build a near-real-time AI interpreter for Vietnamese and En
 ```
 vietnamese-interpreter/
 ├── data/
-│   ├── input/          # Audio files for testing
-│   └── output/         # Processed results
-├── logs/               # Log files with GMT+7 timestamps
+│   └── conversations/    # Daily conversation logs
+├── logs/                 # System logs with GMT+7 timestamps
 ├── src/
-│   ├── transcription.py
-│   ├── translation.py
-│   └── main.py
-├── config.json         # Model paths and settings
-└── requirements.txt    # Essential dependencies
+│   ├── transcription.py  # Speech recognition setup
+│   ├── translation.py    # Gemini translation module
+│   ├── logger.py         # Centralized logging
+│   └── main.py          # Main application
+├── config.json          # Configuration and API keys
+└── requirements.txt     # Dependencies
 ```
 
 #### Environment Setup
 - Python environment setup
-- GPU detection and fallback to CPU
+- Microphone and audio driver setup
+- API key configuration
 
 #### Testing & Validation
-- Sample audio files for testing (Vietnamese and English)
-- Basic performance benchmarking scripts
-- Manual validation workflows using Colab Notebook
+- Real-time testing with microphone input
+- Basic performance benchmarking
+- Manual validation workflows
 
 ### Post-POC Phase
 
@@ -90,9 +90,9 @@ vietnamese-interpreter/
 ### POC Phase
 
 #### Input/Output Handling
-- Command-line interface for file processing
-- Support for basic audio formats (WAV, MP3)
-- Simple text output to console and files
+- Command-line interface for real-time processing
+- Microphone input with keyboard controls
+- Audio output via text-to-speech and console logging
 
 #### Translation Flow
 - Manual language selection override
@@ -103,7 +103,7 @@ vietnamese-interpreter/
 
 #### Advanced Interface
 - Graphical user interface development
-- Real-time audio processing (still dont know what recording devices are used)
+- Enhanced real-time audio processing
 - Interactive translation controls
 - User preference management
 
@@ -120,12 +120,12 @@ vietnamese-interpreter/
 ## System Cost
 
 #### Development Costs
-- **Setup Time**: 2-4 hours for initial environment and API configuration
-- **Hardware**: Optional GPU (recommended for faster Whisper processing)
+- **Setup Time**: 1-2 hours for initial environment and API configuration
+- **Hardware**: Microphone and audio drivers required
 
 #### Operational Costs
 - **Gemini API**: combine price of input and output is ~$1 per 1M tokens (Flash 2.0 pricing)
-- **Hugging Face**: Free for Whisper model usage
+- **Google Speech Recognition**: Free for basic usage
 - **Infrastructure**: Local development machine or basic cloud instance
 
 ## System Criteria

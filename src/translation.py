@@ -7,10 +7,15 @@ import google.generativeai as genai
 from logger import setup_logger
 
 class TextTranslator:
-    def __init__(self, config_path="config.json"):
+    def __init__(self, config_path=None, config_dict=None):
         """Initialize the translator with configuration"""
-        with open(config_path, 'r') as f:
-            self.config = json.load(f)
+        if config_dict:
+            self.config = config_dict
+        elif config_path:
+            with open(config_path, 'r') as f:
+                self.config = json.load(f)
+        else:
+            raise ValueError("Either config_path or config_dict must be provided")
         
         self.setup_logging()
         self.load_model()
@@ -19,7 +24,7 @@ class TextTranslator:
         """Setup logging using centralized logger"""
         log_file = os.path.join(self.config['paths']['logs_dir'], 'translation.txt')
         self.logger = setup_logger('translation', log_file, self.config['logging']['log_level'])
-        self.logger.info("Text translator initialized")
+        self.logger.info("Translator init")
     
     def load_model(self):
         """Load Gemini model"""
@@ -35,7 +40,7 @@ class TextTranslator:
             model_name = self.config.get('models', {}).get('gemini', 'gemini-pro')
             self.model = genai.GenerativeModel(model_name)
             
-            self.logger.info(f"Gemini model '{model_name}' loaded successfully")
+            self.logger.info(f"Gemini '{model_name}' ready")
             
         except Exception as e:
             self.logger.error(f"Failed to load Gemini model: {str(e)}")
@@ -55,7 +60,7 @@ class TextTranslator:
             if source_language not in ['vi', 'en']:
                 raise ValueError("source_language must be 'vi' or 'en'. Auto-detection has been removed.")
             
-            self.logger.info(f"Using source language: {source_language}")
+            self.logger.info(f"Translating: {source_language} → {'en' if source_language == 'vi' else 'vi'}")
             
             # Set translation direction and create prompt
             if source_language == 'vi':
@@ -69,12 +74,15 @@ class TextTranslator:
             response = self.model.generate_content(prompt)
             translated_text = response.text.strip()
             
+            processing_time = time.time() - start_time
+            self.logger.info(f"Done: {processing_time:.2f}s")
+            
             return {
                 'raw_transcript': text,
                 'translated_text': translated_text,
                 'source_language': source_language,
                 'target_language': target_language,
-                'processing_time': time.time() - start_time,
+                'processing_time': processing_time,
                 'timestamp': datetime.now(pytz.timezone('Asia/Bangkok')).isoformat()
             }
             
@@ -95,7 +103,7 @@ class TextTranslator:
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(translation_result, f, ensure_ascii=False, indent=2)
             
-            self.logger.info(f"Translation saved to: {output_path}")
+            self.logger.info(f"Saved: {output_path}")
             return output_path
             
         except Exception as e:

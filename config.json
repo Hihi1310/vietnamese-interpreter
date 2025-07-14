@@ -1,25 +1,14 @@
 {
+  
   "models": {
-    "whisper": "openai/whisper-large-v3-turbo",
     "gemini": "gemini-2.0-flash"
   },
 
-  "huggingface_token": "",
   "gemini_api_key": "", 
-  
-  "audio": {
-    "sample_rate": 16000,
-    "supported_formats": [".wav", ".mp3", ".m4a"],
-    "preprocessing": {
-      "normalize": true,
-      "noise_reduction": true
-    }
-  },
 
   "translation": {
     "source_languages": ["vi", "en"],
-    "target_languages": ["en", "vi"],
-    "confidence_threshold": 0.3
+    "target_languages": ["en", "vi"]
   },
 
   "logging": {
@@ -30,9 +19,7 @@
   },
   
   "paths": {
-    "input_dir": "./data/input",
-    "output_dir": "./data/output",
-    "models_dir": "./models",
+    "conversations_dir": "./data/conversations",
     "logs_dir": "./logs"
   }
 }

@@ -1,11 +1,10 @@
 # Vietnamese Interpreter POC Requirements
-transformers>=4.30.0
-torch>=2.0.0
 soundfile>=0.12.0
 librosa>=0.10.0
-webrtcvad>=2.0.10
 pytz>=2023.3
 jiwer>=3.0.0
-torchcodec==0.2.0
-datasets[audio]>=2.18.0
 google-generativeai>=0.8.5
+gTTS>=2.5.4
+pygame>=2.1.2
+SpeechRecognition>=3.14.3
+PyAudio>=0.2.14

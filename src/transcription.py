@@ -1,18 +1,18 @@
 import json
 import os
-import time
-from datetime import datetime
-import pytz
-import librosa
-from transformers import pipeline
-import torch
+import speech_recognition as sr
 from logger import setup_logger
 
 class AudioTranscriber:
-    def __init__(self, config_path="config.json"):
-        """Initialize the transcriber with configuration"""
-        with open(config_path, 'r') as f:
-            self.config = json.load(f)
+    def __init__(self, config_path=None, config_dict=None):
+        """Initialize the transcriber with configuration for real-time speech recognition"""
+        if config_dict:
+            self.config = config_dict
+        elif config_path:
+            with open(config_path, 'r') as f:
+                self.config = json.load(f)
+        else:
+            raise ValueError("Either config_path or config_dict must be provided")
         
         self.setup_logging()
         self.load_model()
@@ -21,85 +21,26 @@ class AudioTranscriber:
         """Setup logging using centralized logger"""
         log_file = os.path.join(self.config['paths']['logs_dir'], 'transcription.txt')
         self.logger = setup_logger('transcription', log_file, self.config['logging']['log_level'])
-        self.logger.info("Audio transcriber initialized")
+        self.logger.info("Speech recognizer init")
     
     def load_model(self):
-        """Load Whisper model"""
+        """Initialize speech recognition for real-time use"""
         try:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            self.logger.info(f"Loading Whisper model on {device}")
+            # Initialize speech recognizer
+            self.recognizer = sr.Recognizer()
             
-            self.whisper = pipeline(
-                "automatic-speech-recognition",
-                model=self.config['models']['whisper'],
-                device=0 if device == "cuda" else -1,
-                token=self.config.get('huggingface_token', "")
-            )
-            self.logger.info("Whisper model loaded successfully")
+            # Configure recognizer settings for real-time use
+            self.recognizer.dynamic_energy_threshold = False
+            self.recognizer.energy_threshold = 400
+            
+            self.logger.info("Speech recognition ready for real-time mode")
             
         except Exception as e:
-            self.logger.error(f"Failed to load model: {str(e)}")
-            raise
-    
-    def transcribe(self, audio_path):
-        """Transcribe audio file"""
-        start_time = time.time()
-        
-        try:
-            self.logger.info(f"Starting transcription of: {audio_path}")
-            
-            # Check file exists and format
-            if not os.path.exists(audio_path):
-                raise FileNotFoundError(f"Audio file not found: {audio_path}")
-            
-            file_ext = os.path.splitext(audio_path)[1].lower()
-            if file_ext not in self.config['audio']['supported_formats']:
-                raise ValueError(f"Unsupported audio format: {file_ext}")
-            
-            # Transcribe directly with Whisper
-            result = self.whisper(audio_path, return_timestamps=True)
-            
-            processing_time = time.time() - start_time
-            
-            # Extract transcription information (language will be provided by user)
-            transcription = {
-                'text': result['text'],
-                'processing_time': processing_time,
-                'file_path': audio_path,
-                'timestamp': datetime.now(pytz.timezone('Asia/Bangkok')).isoformat()
-            }
-            
-            self.logger.info(f"Transcription completed in {processing_time:.2f}s")
-            self.logger.info(f"Text length: {len(transcription['text'])} characters")
-            
-            return transcription
-            
-        except Exception as e:
-            self.logger.error(f"Transcription failed: {str(e)}")
-            raise
-    
-    def save_transcription(self, transcription, output_path=None):
-        """Save transcription to file"""
-        try:
-            if output_path is None:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                output_path = os.path.join(
-                    self.config['paths']['output_dir'], 
-                    f"transcription_{timestamp}.json"
-                )
-            
-            with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(transcription, f, ensure_ascii=False, indent=2)
-            
-            self.logger.info(f"Transcription saved to: {output_path}")
-            return output_path
-            
-        except Exception as e:
-            self.logger.error(f"Failed to save transcription: {str(e)}")
+            self.logger.error(f"Failed to initialize speech recognition: {str(e)}")
             raise
 
 if __name__ == "__main__":
     # Simple test
     transcriber = AudioTranscriber()
-    print("Audio Transcriber initialized successfully!")
-    print("Place audio files in ./data/input/ and use transcriber.transcribe(file_path)")
+    print("Speech Recognition initialized successfully for real-time mode!")
+    print("This module provides speech recognition setup for the Vietnamese interpreter.")
