@@ -15,11 +15,7 @@ A real-time bilingual interpreter for Vietnamese and English using Google Speech
 ### 1. Install Dependencies
 
 ```bash
-pip install speech_recognition google-generativeai gtts pygame pytz
-```
-OR
-```bash
-pip -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ### 2. Configure API Key
@@ -145,7 +141,8 @@ Basic `config.json` structure:
 - Only Vietnamese ↔ English supported
 - Real-time mode only (remove file processing)
 
-Perfect for: Live conversations, meetings, language learning  
+## System use cases
+Perfect for: Live conversations, meetings
 Not ideal for: Offline use, audio file processing
 
 
